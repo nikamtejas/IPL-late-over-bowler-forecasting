@@ -21,6 +21,11 @@ paths:
   late_over_bowler_loads: data/processed/late_over_bowler_loads.parquet
   overs_exclusions: data/processed/overs_exclusions.json
   fig_runs_by_over: reports/figures/runs_in_over_by_over.png
+  history_bowler: data/processed/history_bowler.parquet
+  history_batter: data/processed/history_batter.parquet
+  history_league: data/processed/history_league.parquet
+  features: data/processed/features.parquet
+  features_report: reports/features.md
 
 download:
   url: https://cricsheet.org/downloads/ipl_json.zip
@@ -47,6 +52,37 @@ late_overs:
     - {match_id: "1082650", over: 19}  # 2017 final, MI v RPS
     - {match_id: "1181768", over: 19}  # 2019 final, MI v CSK
     - {match_id: "1312200", over: 18}  # 2022 final, RR v GT
+
+# Player and league history (week 3). History for a match uses only matches strictly
+# earlier in (date, numeric match_id) order. Shrunk mean = (n*mean + k*league)/(n + k).
+history:
+  shrinkage_k:
+    bowler_late_overs: 10         # pseudo-overs of league-average late-chase overs
+    bowler_economy_balls: 120     # pseudo-balls, all phases
+    bowler_inn1_late_balls: 60    # pseudo-balls, overs 15-20 of first innings
+    batter_balls: 100             # strike rate, all phases
+    batter_late_balls: 60         # strike rate, overs 15-20
+    batter_dismissal_balls: 200   # dismissals per ball
+  min_history:
+    bowler_late_overs: 5          # fewer earlier late-chase overs -> bowler_low_history
+    batter_balls: 60              # fewer earlier balls faced -> striker_low_history
+  # Used only where no earlier match exists at all (the first IPL match): typical T20 values.
+  league_prior:
+    late_over_runs: 8.5
+    economy: 7.5                  # runs conceded per over
+    inn1_late_economy: 9.0
+    strike_rate: 120.0
+    late_strike_rate: 140.0
+    dismissals_per_ball: 0.05
+
+features:
+  # Optional one-hot of player IDs, fitted on training rows only; rarer IDs -> "unknown".
+  id_encoding:
+    enabled: false
+    roles: [bowler_id, striker_id]
+    min_rows: 30
+  leakage_check_rows: 300         # random rows recomputed from raw data on every `make features`
+  label_correlation_threshold: 0.9
 
 # Season = calendar year of the match's first date (Cricsheet labels such as
 # "2007/08" and "2020/21" are normalised this way; see reports/data_audit.md).

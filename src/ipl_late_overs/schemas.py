@@ -309,3 +309,114 @@ LATE_OVER_BOWLER_LOADS = Schema(
         Col("bowled_previous_over", "bool"),
     ),
 )
+
+
+# --------------------------------------------------------------------------- #
+# History (stage: features). Cumulative totals per player AFTER each match they
+# played in; a lookup for match m uses the last row with match_order < m's.
+# --------------------------------------------------------------------------- #
+
+_HISTORY_KEY_COLS = (
+    Col("player_id", "str"),
+    Col("match_id", "str"),
+    Col("match_order", "int", min=1),
+)
+
+BOWLER_HISTORY = Schema(
+    name="history_bowler",
+    description="Cumulative bowling totals per bowler after each match they bowled in.",
+    key=("player_id", "match_order"),
+    columns=_HISTORY_KEY_COLS + (
+        Col("late_chase_overs", "int", min=0),  # late-over rows (same label definition as late_overs)
+        Col("late_chase_runs", "int", min=0),  # sum of runs_in_over in those rows
+        Col("legal_balls", "int", min=0),  # all phases, both innings
+        Col("runs_conceded", "int", min=0),  # batter runs + wides + no-balls
+        Col("inn1_late_legal_balls", "int", min=0),  # overs 15-20 of the first innings
+        Col("inn1_late_runs_conceded", "int", min=0),
+    ),
+)
+
+BATTER_HISTORY = Schema(
+    name="history_batter",
+    description="Cumulative batting totals per batter after each match they batted in.",
+    key=("player_id", "match_order"),
+    columns=_HISTORY_KEY_COLS + (
+        Col("balls_faced", "int", min=0),  # deliveries faced excluding wides
+        Col("runs", "int", min=0),  # runs off the bat
+        Col("late_balls_faced", "int", min=0),  # overs 15-20, either innings
+        Col("late_runs", "int", min=0),
+        Col("dismissals", "int", min=0),  # as player_out; retired hurt excluded
+    ),
+)
+
+LEAGUE_HISTORY = Schema(
+    name="history_league",
+    description="League-wide cumulative totals after each match (all matches, in match_order).",
+    key=("match_order",),
+    columns=(
+        Col("match_id", "str"),
+        Col("match_order", "int", min=1),
+        Col("date", "date"),
+        Col("late_chase_overs", "int", min=0),
+        Col("late_chase_runs", "int", min=0),
+        Col("legal_balls", "int", min=0),
+        Col("runs_conceded", "int", min=0),
+        Col("inn1_late_legal_balls", "int", min=0),
+        Col("inn1_late_runs_conceded", "int", min=0),
+        Col("balls_faced", "int", min=0),
+        Col("runs", "int", min=0),
+        Col("late_balls_faced", "int", min=0),
+        Col("late_runs", "int", min=0),
+        Col("dismissals", "int", min=0),
+    ),
+)
+
+# --------------------------------------------------------------------------- #
+# Feature matrix (stage: features). Built only by features.build_features.
+# --------------------------------------------------------------------------- #
+
+FEATURE_ID_COLUMNS = ("match_id", "over", "season", "bowler_id", "label_runs_in_over")
+
+FEATURES = Schema(
+    name="features",
+    description="Model matrix: one row per late-over row, actual bowler. Every feature is non-null.",
+    key=("match_id", "over"),
+    columns=(
+        Col("match_id", "str"),
+        Col("over", "int", min=0),
+        Col("season", "int", min=2008),
+        Col("bowler_id", "str"),
+        Col("label_runs_in_over", "int", min=0),
+        # --- match state before the over
+        Col("over_number", "int", min=1),
+        Col("target", "int", min=1),
+        Col("runs_scored", "int", min=0),
+        Col("runs_needed", "int", min=1),
+        Col("balls_remaining", "int", min=1),
+        Col("wickets_in_hand", "int", min=1),
+        Col("required_rate", "float", min=0),
+        Col("bowler_overs_before", "int", min=0),
+        # --- bowler history
+        Col("bowler_late_overs", "int", min=0),
+        Col("bowler_late_mean", "float", min=0),
+        Col("bowler_late_mean_shrunk", "float", min=0),
+        Col("bowler_overs_all", "float", min=0),
+        Col("bowler_economy_shrunk", "float", min=0),
+        Col("bowler_inn1_late_economy_shrunk", "float", min=0),
+        # --- batter history (striker and non-striker)
+        Col("striker_balls", "int", min=0),
+        Col("striker_sr_shrunk", "float", min=0),
+        Col("striker_late_sr_shrunk", "float", min=0),
+        Col("striker_dismissal_rate_shrunk", "float", min=0, max=1),
+        Col("non_striker_balls", "int", min=0),
+        Col("non_striker_sr_shrunk", "float", min=0),
+        Col("non_striker_late_sr_shrunk", "float", min=0),
+        Col("non_striker_dismissal_rate_shrunk", "float", min=0, max=1),
+        # --- league
+        Col("league_late_mean", "float", min=0),
+        # --- flags
+        Col("bowler_low_history", "bool"),
+        Col("striker_low_history", "bool"),
+        Col("is_low_history", "bool"),
+    ),
+)

@@ -44,7 +44,7 @@ def path(key: str) -> Path:
 
 
 def _validate(cfg: dict[str, Any]) -> None:
-    for section in ("paths", "download", "match", "late_overs", "splits", "seed"):
+    for section in ("paths", "download", "match", "late_overs", "history", "features", "splits", "seed"):
         assert section in cfg, f"config.yaml is missing section '{section}'"
 
     lo = cfg["late_overs"]

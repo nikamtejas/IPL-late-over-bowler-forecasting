@@ -1,0 +1,46 @@
+# Single source of truth for paths, seasons, splits, thresholds and seeds.
+# Loaded via src/ipl_late_overs/config.py. Paths are relative to the repo root.
+
+paths:
+  raw_dir: data/raw
+  interim_dir: data/interim
+  processed_dir: data/processed
+  models_dir: models
+  reports_dir: reports
+  figures_dir: reports/figures
+  weekly_dir: reports/weekly
+  raw_zip: data/raw/ipl_json.zip
+  download_manifest: data/raw/download_manifest.json
+  matches: data/interim/matches.parquet
+  match_players: data/interim/match_players.parquet
+  people: data/interim/people.parquet
+  deliveries: data/interim/deliveries.parquet
+  replacements: data/interim/replacements.parquet
+  data_audit: reports/data_audit.md
+
+download:
+  url: https://cricsheet.org/downloads/ipl_json.zip
+  timeout_seconds: 120
+
+match:
+  # Standard IPL match format. Matches with other values are flagged in the audit.
+  overs: 20
+  balls_per_over: 6
+
+late_overs:
+  # Overs 15-20 in cricket numbering = Cricsheet 0-indexed overs 14-19.
+  first_over_index: 14
+  last_over_index: 19
+
+# Season = calendar year of the match's first date (Cricsheet labels such as
+# "2007/08" and "2020/21" are normalised this way; see reports/data_audit.md).
+# Splits are by whole season, so all overs of a match stay in one split.
+splits:
+  train_seasons: [2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021]
+  # Expanding-window validation: fold k trains on train_seasons + earlier
+  # validation folds and validates on validation_seasons[k].
+  validation_seasons: [2022, 2023, 2024]
+  # Held out. Only loadable via `evaluate.py --final` (enforced from week 4).
+  test_seasons: [2025, 2026]
+
+seed: 20260101

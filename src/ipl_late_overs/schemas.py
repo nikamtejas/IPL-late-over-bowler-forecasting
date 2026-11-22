@@ -249,3 +249,63 @@ REPLACEMENTS = Schema(
         Col("reason", "str", nullable=True),
     ),
 )
+
+
+# --------------------------------------------------------------------------- #
+# Late-over table (stage: overs)
+# --------------------------------------------------------------------------- #
+
+OVERS_EXCLUSIONS_KEYS = ("match_rules", "innings_rules", "chase_rules", "kept", "row_checks")
+
+LATE_OVERS = Schema(
+    name="late_overs",
+    description="One row per started late over (overs 15-20) of an unrevised IPL chase. "
+    "State columns describe the scoreboard before the over's first ball; runs_in_over is the label.",
+    key=("match_id", "over"),
+    columns=(
+        Col("match_id", "str"),
+        Col("date", "date"),
+        Col("season", "int", min=2008),
+        Col("batting_team", "str"),
+        Col("bowling_team", "str"),
+        Col("over", "int", min=0),  # 0-indexed Cricsheet over
+        Col("over_number", "int", min=1),  # cricket numbering (over + 1)
+        # --- pre-over state (deliveries before the over's first ball only)
+        Col("target", "int", min=1),
+        Col("runs_scored", "int", min=0),
+        Col("runs_needed", "int", min=1),
+        Col("legal_balls_bowled", "int", min=0),
+        Col("balls_remaining", "int", min=1),  # by the over schedule: 6 * (overs - over)
+        Col("wickets_fallen", "int", min=0),
+        Col("wickets_in_hand", "int", min=1),
+        Col("required_rate", "float", min=0),  # runs per over: 6 * runs_needed / balls_remaining
+        Col("striker_id", "str"),
+        Col("non_striker_id", "str"),
+        Col("bowler_id", "str"),  # bowler of the over's first ball
+        Col("prev_bowler_id", "str"),  # bowler of the previous over's last ball
+        Col("bowler_overs_before", "int", min=0),  # overs (incl. partial) this bowler bowled earlier
+        Col("bowler_legal_balls_before", "int", min=0),
+        # --- the over itself (outcome; never a feature)
+        Col("runs_in_over", "int", min=0),  # label: sum of runs.total, all extras included
+        Col("legal_balls_in_over", "int", min=0),
+        Col("deliveries_in_over", "int", min=1),
+        Col("n_bowlers_in_over", "int", min=1),  # >1 when a bowler was replaced mid-over
+        Col("over_completed", "bool"),
+        Col("chase_ended_in_over", "bool"),
+    ),
+)
+
+LATE_OVER_BOWLER_LOADS = Schema(
+    name="late_over_bowler_loads",
+    description="For each late-over row: every fielding bowler who bowled earlier in the chase, "
+    "with overs and legal balls bowled before that over.",
+    key=("match_id", "over", "bowler_id"),
+    columns=(
+        Col("match_id", "str"),
+        Col("over", "int", min=0),
+        Col("bowler_id", "str"),
+        Col("overs_bowled", "int", min=1),
+        Col("legal_balls_bowled", "int", min=0),
+        Col("bowled_previous_over", "bool"),
+    ),
+)

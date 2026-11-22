@@ -273,12 +273,10 @@ def build_report(t: dict[str, pd.DataFrame], zip_path: Path) -> str:
     w(f"- Squad sizes per team per match: {dict(sorted((int(k), int(v)) for k, v in Counter(sq.values).items()))}\n")
 
     # ------------------------------------------------------------------ exclusions
-    w("## 11. Exclusion log\n")
-    w("| stage | rule | rows / matches removed |\n|---|---|---|")
-    w("| parse (week 1) | none: every match and delivery in the zip is parsed | 0 |\n")
+    out.extend(late_over_sections(m, people))
 
     # ------------------------------------------------------------------ splits
-    w("## 12. Proposed season split (config.yaml)\n")
+    w("## 13. Season split (config.yaml)\n")
     s = cfg["splits"]
     split_rows = []
     for name, seasons in (("train", s["train_seasons"]), ("validation", s["validation_seasons"]), ("test", s["test_seasons"])):
@@ -288,6 +286,88 @@ def build_report(t: dict[str, pd.DataFrame], zip_path: Path) -> str:
     w(md_table(pd.DataFrame(split_rows)))
     w(f"\nSeasons in the data not assigned to any split: {unassigned or 'none'}.\n")
     return "\n".join(out) + "\n"
+
+
+def late_over_sections(m: pd.DataFrame, people: pd.DataFrame) -> list[str]:
+    """Sections 11-12: the exclusion log and the late-over table (stage: overs)."""
+    cfg = config.load_config()
+    excl = schemas.read_json(config.path("overs_exclusions"), schemas.OVERS_EXCLUSIONS_KEYS)
+    late = schemas.read_table(config.path("late_overs"), schemas.LATE_OVERS)
+    out: list[str] = []
+    w = out.append
+
+    w("## 11. Exclusion log\n")
+    w("Match rules are applied in order; a match is counted under the first rule it fails.\n")
+    w("| stage | rule | removed |\n|---|---|---|")
+    w("| parse (week 1) | none: every match and delivery in the zip is parsed | 0 |")
+    for r in excl["match_rules"]:
+        w(f"| overs (week 2) | match: {r['rule']} | {r['matches_removed']} matches |")
+    for r in excl["innings_rules"]:
+        w(f"| overs (week 2) | deliveries: {r['rule']} | {r['deliveries_removed']:,} deliveries |")
+    for r in excl["chase_rules"]:
+        w(f"| overs (week 2) | {r['rule']} | {r['chases']} chases |")
+    k = excl["kept"]
+    w(f"\n**Kept:** {k['matches']:,} matches; {k['chases_with_late_overs']:,} chases reach over 15, "
+      f"giving **{k['late_over_rows']:,} late-over rows**. No late-over row is dropped.\n")
+    for r in excl["match_rules"]:
+        if r["match_ids"]:
+            w(f"- {r['rule']}: {', '.join(r['match_ids'])}")
+    w("")
+
+    c = excl["row_checks"]
+    w("## 12. Late-over table (`data/processed/late_overs.parquet`)\n")
+    w("One row per started over 15-20 of a kept chase. The label `runs_in_over` = sum of `runs.total` "
+      "(batter runs + wides, no-balls, byes, leg byes, penalties) until the over or the chase ends. "
+      "State columns use only deliveries before the over's first ball.\n")
+    w("Rules:\n")
+    w(f"- Wickets fallen = dismissals. Not counted as dismissals: {', '.join(cfg['late_overs']['non_dismissal_wicket_kinds'])} "
+      "(batter may return). `retired out` counts as a dismissal.")
+    w("- `balls_remaining` = 6 x overs left (the over schedule). It differs from 120 - legal balls only after an "
+      f"umpire miscount: {c['rows_where_120_minus_legal_differs_from_schedule']} rows.")
+    w("- Bowler of the over = bowler of its first ball; previous bowler = bowler of the previous over's last ball.")
+    w("- Bowler loads before each over are in `late_over_bowler_loads.parquet` (every fielding bowler who has bowled).\n")
+    w("Checks (all asserted in `overs.py`; the stage fails if any breaks):\n")
+    w("- no null labels; `runs_needed` > 0; `wickets_in_hand` >= 1; `balls_remaining` in 6-36; exactly one row per (match_id, over)")
+    w("- row count = distinct late overs in the chase deliveries; label total = delivery runs total; "
+      "`runs_scored` chains from one over to the next")
+    w("- no over is bowled by the previous over's bowler\n")
+    w("Counts:\n")
+    w(f"- chase deliveries: {c['chase_deliveries']:,}; chase overs: {c['chase_overs']:,}; duplicate deliveries: 0; missing values: 0")
+    w(f"- mid-innings overs with < 6 legal balls: {c['incomplete_overs_mid_innings']}; overs with > 6 legal balls: "
+      f"{c['overs_with_extra_legal_balls']} (umpire miscounts, kept as bowled)")
+    w(f"- late overs not completed because the chase ended: {c['overs_not_completed_chase_ended']}")
+    w(f"- late overs with more than one bowler (mid-over replacement): {c['overs_with_more_than_one_bowler']} (kept; "
+      "`n_bowlers_in_over` flags them)")
+    w(f"- bowler already at the {cfg['match']['max_overs_per_bowler']}-over limit before the over: "
+      f"{c['bowler_over_quota_reached_before_over']}\n")
+    by_over = late.groupby("over_number")["runs_in_over"].agg(["size", "mean", "median", "std"]).round(2).reset_index()
+    by_over.columns = ["over", "rows", "mean runs", "median", "sd"]
+    w(md_table(by_over))
+    w("\nFigure: `reports/figures/runs_in_over_by_over.png`.\n")
+
+    w("### 12.1 Five hand-verified overs\n")
+    w("Rebuilt by hand from the raw JSON in `tests/test_overs.py`; the test asserts the table matches. "
+      "Check against the ESPNcricinfo scorecards of these IPL finals.\n")
+    keys = pd.DataFrame(cfg["late_overs"]["verification_overs"])
+    v = keys.merge(late, on=["match_id", "over"], how="left", validate="one_to_one")
+    assert v["runs_in_over"].notna().all(), "a verification over is missing from the table"
+    v = v.merge(m[["match_id", "event_stage"]], on="match_id")
+    name = people.set_index("player_id")["display_name"]
+    rows = pd.DataFrame({
+        "date": v["date"].dt.date,
+        "match": v["batting_team"] + " chasing v " + v["bowling_team"],
+        "over": v["over_number"],
+        "before the over": v["runs_scored"].astype(str) + "/" + v["wickets_fallen"].astype(str)
+        + ", need " + v["runs_needed"].astype(str) + " off " + v["balls_remaining"].astype(str),
+        "striker / non-striker": v["striker_id"].map(name) + " / " + v["non_striker_id"].map(name),
+        "bowler (prev)": v["bowler_id"].map(name) + " (" + v["prev_bowler_id"].map(name) + ")",
+        "runs in over": v["runs_in_over"],
+        "legal balls": v["legal_balls_in_over"],
+        "completed": v["over_completed"],
+    })
+    w(md_table(rows))
+    w("")
+    return out
 
 
 def main() -> None:

@@ -267,11 +267,76 @@ Franchise renames appear as different names (Delhi Daredevils -> Delhi Capitals,
 
 ## 11. Exclusion log
 
-| stage | rule | rows / matches removed |
+Match rules are applied in order; a match is counted under the first rule it fails.
+
+| stage | rule | removed |
 |---|---|---|
 | parse (week 1) | none: every match and delivery in the zip is parsed | 0 |
+| overs (week 2) | match: no result | 9 matches |
+| overs (week 2) | match: fewer than two regular innings | 0 matches |
+| overs (week 2) | match: non-standard format (overs or balls per over) | 0 matches |
+| overs (week 2) | match: outcome method present (D/L) | 23 matches |
+| overs (week 2) | match: revised target: target overs < 20 | 10 matches |
+| overs (week 2) | deliveries: deliveries of excluded matches | 6,579 deliveries |
+| overs (week 2) | deliveries: super-over innings | 175 deliveries |
+| overs (week 2) | deliveries: first innings (not a chase) | 149,104 deliveries |
+| overs (week 2) | chase ended before over 15 (adds no rows) | 54 chases |
 
-## 12. Proposed season split (config.yaml)
+**Kept:** 1,201 matches; 1,147 chases reach over 15, giving **6,029 late-over rows**. No late-over row is dropped.
+
+- no result: 1178424, 1359519, 1473481, 1473492, 1473495, 1527685, 501265, 829763, 829813
+- outcome method present (D/L): 1082648, 1136566, 1136578, 1136592, 1359476, 1370353, 1473493, 1529293, 336022, 336025, 392183, 392186, 392214, 501215, 501245, 501255, 733993, 829743, 829807, 980943, 980989, 980997, 980999
+- revised target: target overs < 20: 1426298, 1473471, 1527686, 336010, 336012, 548307, 598068, 733971, 829771, 829803
+
+## 12. Late-over table (`data/processed/late_overs.parquet`)
+
+One row per started over 15-20 of a kept chase. The label `runs_in_over` = sum of `runs.total` (batter runs + wides, no-balls, byes, leg byes, penalties) until the over or the chase ends. State columns use only deliveries before the over's first ball.
+
+Rules:
+
+- Wickets fallen = dismissals. Not counted as dismissals: retired hurt (batter may return). `retired out` counts as a dismissal.
+- `balls_remaining` = 6 x overs left (the over schedule). It differs from 120 - legal balls only after an umpire miscount: 12 rows.
+- Bowler of the over = bowler of its first ball; previous bowler = bowler of the previous over's last ball.
+- Bowler loads before each over are in `late_over_bowler_loads.parquet` (every fielding bowler who has bowled).
+
+Checks (all asserted in `overs.py`; the stage fails if any breaks):
+
+- no null labels; `runs_needed` > 0; `wickets_in_hand` >= 1; `balls_remaining` in 6-36; exactly one row per (match_id, over)
+- row count = distinct late overs in the chase deliveries; label total = delivery runs total; `runs_scored` chains from one over to the next
+- no over is bowled by the previous over's bowler
+
+Counts:
+
+- chase deliveries: 139,874; chase overs: 22,750; duplicate deliveries: 0; missing values: 0
+- mid-innings overs with < 6 legal balls: 1; overs with > 6 legal balls: 3 (umpire miscounts, kept as bowled)
+- late overs not completed because the chase ended: 595
+- late overs with more than one bowler (mid-over replacement): 18 (kept; `n_bowlers_in_over` flags them)
+- bowler already at the 4-over limit before the over: 0
+
+| over | rows | mean runs | median | sd |
+|---|---|---|---|---|
+| 15 | 1147 | 8.46 | 8.0 | 4.54 |
+| 16 | 1122 | 8.99 | 8.0 | 4.92 |
+| 17 | 1083 | 9.11 | 9.0 | 4.87 |
+| 18 | 1025 | 9.66 | 9.0 | 5.21 |
+| 19 | 930 | 9.16 | 8.0 | 5.2 |
+| 20 | 722 | 8.73 | 8.0 | 5.16 |
+
+Figure: `reports/figures/runs_in_over_by_over.png`.
+
+### 12.1 Five hand-verified overs
+
+Rebuilt by hand from the raw JSON in `tests/test_overs.py`; the test asserts the table matches. Check against the ESPNcricinfo scorecards of these IPL finals.
+
+| date | match | over | before the over | striker / non-striker | bowler (prev) | runs in over | legal balls | completed |
+|---|---|---|---|---|---|---|---|---|
+| 2008-06-01 | Rajasthan Royals chasing v Chennai Super Kings | 20 | 156/7, need 8 off 6 | Sohail Tanvir / SK Warne | L Balaji (M Ntini) | 8 | 6 | True |
+| 2014-06-01 | Kolkata Knight Riders chasing v Kings XI Punjab | 20 | 195/7, need 5 off 6 | SP Narine / PP Chawla | P Awana (MG Johnson) | 5 | 3 | False |
+| 2017-05-21 | Rising Pune Supergiant chasing v Mumbai Indians | 20 | 119/3, need 11 off 6 | MK Tiwary / SPD Smith | MG Johnson (JJ Bumrah) | 9 | 6 | True |
+| 2019-05-12 | Chennai Super Kings chasing v Mumbai Indians | 20 | 141/5, need 9 off 6 | SR Watson / RA Jadeja | SL Malinga (JJ Bumrah) | 7 | 6 | True |
+| 2022-05-29 | Gujarat Titans chasing v Rajasthan Royals | 19 | 127/3, need 4 off 12 | Shubman Gill / DA Miller | OC McCoy (R Ashwin) | 6 | 1 | False |
+
+## 13. Season split (config.yaml)
 
 | split | seasons | n_seasons | matches |
 |---|---|---|---|

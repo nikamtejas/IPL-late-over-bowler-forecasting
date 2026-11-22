@@ -45,7 +45,7 @@ def test_match_metadata(fixture_tables):
 
 def test_target_equals_first_innings_plus_one(fixture_tables):
     m = fixture_tables["matches"].set_index("match_id")
-    for mid in m.index:
+    for mid in m.index[m["method"].isna()]:
         first = innings_summary(fixture_tables["deliveries"], mid, 1)[1]
         assert m.loc[mid, "target_runs"] == first + 1
 

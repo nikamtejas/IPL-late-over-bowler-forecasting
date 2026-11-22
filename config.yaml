@@ -17,6 +17,10 @@ paths:
   deliveries: data/interim/deliveries.parquet
   replacements: data/interim/replacements.parquet
   data_audit: reports/data_audit.md
+  late_overs: data/processed/late_overs.parquet
+  late_over_bowler_loads: data/processed/late_over_bowler_loads.parquet
+  overs_exclusions: data/processed/overs_exclusions.json
+  fig_runs_by_over: reports/figures/runs_in_over_by_over.png
 
 download:
   url: https://cricsheet.org/downloads/ipl_json.zip
@@ -26,11 +30,23 @@ match:
   # Standard IPL match format. Matches with other values are flagged in the audit.
   overs: 20
   balls_per_over: 6
+  max_overs_per_bowler: 4
 
 late_overs:
   # Overs 15-20 in cricket numbering = Cricsheet 0-indexed overs 14-19.
   first_over_index: 14
   last_over_index: 19
+  wickets_per_innings: 10
+  # Wicket entries that are NOT dismissals (the batter may return). "retired out" IS a dismissal.
+  non_dismissal_wicket_kinds: ["retired hurt"]
+  # Five late overs rebuilt by hand from the raw JSON (tests/test_overs.py) and printed in
+  # the audit for checking against ESPNcricinfo. Over = 0-indexed Cricsheet over.
+  verification_overs:
+    - {match_id: "336040", over: 19}   # 2008 final, RR v CSK
+    - {match_id: "734049", over: 19}   # 2014 final, KKR v KXIP
+    - {match_id: "1082650", over: 19}  # 2017 final, MI v RPS
+    - {match_id: "1181768", over: 19}  # 2019 final, MI v CSK
+    - {match_id: "1312200", over: 18}  # 2022 final, RR v GT
 
 # Season = calendar year of the match's first date (Cricsheet labels such as
 # "2007/08" and "2020/21" are normalised this way; see reports/data_audit.md).

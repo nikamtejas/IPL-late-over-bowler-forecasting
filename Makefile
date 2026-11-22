@@ -4,7 +4,7 @@
 PYTHON ?= .venv/bin/python
 RUN := PYTHONPATH=src $(PYTHON) -m
 
-STAGES := download parse audit
+STAGES := download parse overs figures audit
 
 .PHONY: all setup $(STAGES) test clean
 
@@ -21,7 +21,13 @@ download:
 parse: download
 	$(RUN) ipl_late_overs.parse
 
-audit: parse
+overs: parse
+	$(RUN) ipl_late_overs.overs
+
+figures: overs
+	$(RUN) ipl_late_overs.figures
+
+audit: overs
 	$(RUN) ipl_late_overs.audit
 
 test:

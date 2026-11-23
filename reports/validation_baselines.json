@@ -1,0 +1,64 @@
+{
+  "baseline_definitions": {
+    "A": "bowler's mean runs per late chase over from earlier matches; league mean if the bowler has < 5 such overs",
+    "B": "Poisson regression (standardised) on over_number, balls_remaining, runs_needed, wickets_in_hand, required_rate"
+  },
+  "folds": [
+    {
+      "fold": 1,
+      "mae_baseline_a": 3.9281253172216517,
+      "mae_baseline_b": 3.905051740745447,
+      "mean_label": 9.49868073878628,
+      "mean_pred_a": 8.727931184058876,
+      "mean_pred_b": 8.713401144027221,
+      "share_a_used_league_mean": 0.22691292875989447,
+      "train_rows": 4268,
+      "train_seasons": [
+        2008,
+        2021
+      ],
+      "validation_rows": 379,
+      "validation_season": 2022
+    },
+    {
+      "fold": 2,
+      "mae_baseline_a": 4.228575939659828,
+      "mae_baseline_b": 4.089760428241047,
+      "mean_label": 9.490616621983914,
+      "mean_pred_a": 8.803117617336275,
+      "mean_pred_b": 8.82997336337029,
+      "share_a_used_league_mean": 0.29222520107238603,
+      "train_rows": 4647,
+      "train_seasons": [
+        2008,
+        2022
+      ],
+      "validation_rows": 373,
+      "validation_season": 2023
+    },
+    {
+      "fold": 3,
+      "mae_baseline_a": 4.534330622329414,
+      "mae_baseline_b": 4.312844212304704,
+      "mean_label": 9.944281524926685,
+      "mean_pred_a": 9.029923654498152,
+      "mean_pred_b": 8.77805466474376,
+      "share_a_used_league_mean": 0.15542521994134897,
+      "train_rows": 5020,
+      "train_seasons": [
+        2008,
+        2023
+      ],
+      "validation_rows": 341,
+      "validation_season": 2024
+    }
+  ],
+  "summary": {
+    "best_baseline": "B",
+    "mae_to_beat": 4.1025521270970655,
+    "mean_fold_mae_baseline_a": 4.230343959736964,
+    "mean_fold_mae_baseline_b": 4.1025521270970655,
+    "pooled_mae_baseline_a": 4.219785053004989,
+    "pooled_mae_baseline_b": 4.095311185610557
+  }
+}

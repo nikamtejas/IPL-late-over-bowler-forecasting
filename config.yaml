@@ -26,6 +26,10 @@ paths:
   history_league: data/processed/history_league.parquet
   features: data/processed/features.parquet
   features_report: reports/features.md
+  splits: data/processed/splits.json
+  splits_report: reports/splits.md
+  validation_baselines: reports/validation_baselines.json
+  fig_validation_baselines: reports/figures/validation_baselines.png
 
 download:
   url: https://cricsheet.org/downloads/ipl_json.zip
@@ -94,5 +98,14 @@ splits:
   validation_seasons: [2022, 2023, 2024]
   # Held out. Only loadable via `evaluate.py --final` (enforced from week 4).
   test_seasons: [2025, 2026]
+
+baselines:
+  # Baseline A: the bowler's historical mean runs per late chase over (earlier matches only);
+  # the league mean when the bowler has fewer than history.min_history.bowler_late_overs overs.
+  # Baseline B: Poisson regression on the scoreboard only (inputs standardised inside the pipeline).
+  baseline_b:
+    features: [over_number, balls_remaining, runs_needed, wickets_in_hand, required_rate]
+    alpha: 0.0001
+    max_iter: 1000
 
 seed: 20260101

@@ -24,6 +24,8 @@ make test         # runs the test suite
 | `make parse` | `parse.py` | `data/interim/{matches,match_players,people,deliveries,replacements}.parquet` |
 | `make overs` | `overs.py` | `data/processed/late_overs.parquet`, `late_over_bowler_loads.parquet`, `overs_exclusions.json` |
 | `make features` | `features.py` (+ `history.py`) | `data/processed/history_{bowler,batter,league}.parquet`, `features.parquet`, `reports/features.md` |
+| `make splits` | `splits.py` | `data/processed/splits.json`, `reports/splits.md` |
+| `make baselines` | `baselines.py` | `reports/validation_baselines.json` (validation folds only) |
 | `make figures` | `figures.py` | `reports/figures/*.png` |
 | `make audit` | `audit.py` | `reports/data_audit.md` (data checks, exclusion log, verified overs) |
 
@@ -52,5 +54,11 @@ in `reports/weekly/`, and each week is tagged in git (`week-1`, `week-2`, ...).
   also comes only from earlier matches. Players with no history get the league value, so no feature is NaN.
 - **Low history**: bowler with < 5 earlier late chase overs, or striker with < 60 earlier balls faced.
 - **Runs conceded** = batter runs + wides + no-balls. **Balls faced** excludes wides.
+- **Splits**: by whole match and season. Train 2008-2021; validation folds 2022, 2023, 2024 (expanding window:
+  each fold trains on every earlier season); test 2025-2026. The test set is locked in code: only
+  `evaluate.py --final` (week 6) can open it.
+- **Baseline A**: the bowler's mean runs per late chase over from earlier matches, or the league mean if the
+  bowler has fewer than 5 such overs. **Baseline B**: Poisson regression on over number, balls remaining, runs
+  needed, wickets in hand and required rate.
 - **Features** (`reports/features.md`) are built only by `features.build_features`, which also scores an
   alternative bowler for the same situation via `bowler_override`.

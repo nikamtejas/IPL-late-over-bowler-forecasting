@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 
 # Report styling (reference palette: one series hue, text in ink tokens, recessive grid).
 SURFACE, INK, INK_2, GRID, SERIES = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df", "#2a78d6"
+SERIES_2 = "#eb6834"  # categorical slot 2
 
 
 def _style(ax) -> None:
@@ -60,8 +61,35 @@ def runs_by_over() -> None:
     log.info("wrote %s", p.relative_to(config.REPO_ROOT))
 
 
+def validation_baselines() -> None:
+    """Grouped bars: validation MAE of baselines A and B per fold, plus the mean over folds."""
+    res = schemas.read_json(config.path("validation_baselines"), schemas.VALIDATION_BASELINES_KEYS)
+    labels = [f"Fold {f['fold']}\nvalidate {f['validation_season']}" for f in res["folds"]] + ["Mean of folds"]
+    a = [f["mae_baseline_a"] for f in res["folds"]] + [res["summary"]["mean_fold_mae_baseline_a"]]
+    b = [f["mae_baseline_b"] for f in res["folds"]] + [res["summary"]["mean_fold_mae_baseline_b"]]
+    x = np.arange(len(labels))
+    fig, ax = plt.subplots(figsize=(8, 4.2), facecolor=SURFACE)
+    for off, vals, color, name in ((-0.2, a, SERIES, "A: bowler's historical late-over mean"),
+                                   (0.2, b, SERIES_2, "B: scoreboard Poisson regression")):
+        bars = ax.bar(x + off, vals, width=0.38, color=color, label=name, linewidth=0)
+        for bar, v in zip(bars, vals):
+            ax.text(bar.get_x() + bar.get_width() / 2, v + 0.05, f"{v:.2f}", ha="center", va="bottom", fontsize=8, color=INK_2)
+    _style(ax)
+    ax.set_xticks(x, labels, fontsize=8, color=INK_2)
+    ax.set_ylabel("MAE (runs per over)", fontsize=8, color=INK_2)
+    ax.set_ylim(0, max(a + b) * 1.15)
+    ax.legend(frameon=False, fontsize=8, loc="upper left", labelcolor=INK_2)
+    fig.suptitle("Validation MAE of the two baselines (lower is better)", x=0.08, ha="left", fontsize=12, color=INK)
+    fig.tight_layout(rect=(0.02, 0, 1, 0.95))
+    p = config.path("fig_validation_baselines")
+    fig.savefig(p, dpi=150, facecolor=SURFACE)
+    plt.close(fig)
+    log.info("wrote %s", p.relative_to(config.REPO_ROOT))
+
+
 def main() -> None:
     runs_by_over()
+    validation_baselines()
 
 
 if __name__ == "__main__":

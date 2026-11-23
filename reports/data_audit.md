@@ -336,13 +336,13 @@ Rebuilt by hand from the raw JSON in `tests/test_overs.py`; the test asserts the
 | 2019-05-12 | Chennai Super Kings chasing v Mumbai Indians | 20 | 141/5, need 9 off 6 | SR Watson / RA Jadeja | SL Malinga (JJ Bumrah) | 7 | 6 | True |
 | 2022-05-29 | Gujarat Titans chasing v Rajasthan Royals | 19 | 127/3, need 4 off 12 | Shubman Gill / DA Miller | OC McCoy (R Ashwin) | 6 | 1 | False |
 
-## 13. Season split (config.yaml)
+## 13. Season split (`data/processed/splits.json`)
 
-| split | seasons | n_seasons | matches |
-|---|---|---|---|
-| train | 2008-2021 | 14 | 876 |
-| validation | 2022-2024 | 3 | 219 |
-| test | 2025-2026 | 2 | 148 |
+| split | seasons | n_seasons | matches | late-over rows |
+|---|---|---|---|---|
+| train | 2008-2021 | 14 | 876 | 4268 |
+| validation | 2022-2024 | 3 | 219 | 1093 |
+| test | 2025-2026 | 2 | 148 | 668 |
 
-Seasons in the data not assigned to any split: none.
+Every match is in exactly one split and every test match is later than every train/validation match (asserted in `splits.py`). Folds: `reports/splits.md`.
 

@@ -420,3 +420,11 @@ FEATURES = Schema(
         Col("is_low_history", "bool"),
     ),
 )
+
+
+# --------------------------------------------------------------------------- #
+# Splits and validation results (stages: splits, baselines)
+# --------------------------------------------------------------------------- #
+
+SPLITS_KEYS = ("seasons", "train_match_ids", "validation_match_ids", "test_match_ids", "folds", "counts")
+VALIDATION_BASELINES_KEYS = ("folds", "summary", "baseline_definitions")

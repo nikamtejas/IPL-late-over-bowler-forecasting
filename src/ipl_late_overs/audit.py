@@ -276,15 +276,15 @@ def build_report(t: dict[str, pd.DataFrame], zip_path: Path) -> str:
     out.extend(late_over_sections(m, people))
 
     # ------------------------------------------------------------------ splits
-    w("## 13. Season split (config.yaml)\n")
-    s = cfg["splits"]
-    split_rows = []
-    for name, seasons in (("train", s["train_seasons"]), ("validation", s["validation_seasons"]), ("test", s["test_seasons"])):
-        sm = m[m["season"].isin(seasons)]
-        split_rows.append({"split": name, "seasons": f"{min(seasons)}-{max(seasons)}", "n_seasons": len(seasons), "matches": len(sm)})
-    unassigned = sorted(set(m["season"]) - set(s["train_seasons"] + s["validation_seasons"] + s["test_seasons"]))
-    w(md_table(pd.DataFrame(split_rows)))
-    w(f"\nSeasons in the data not assigned to any split: {unassigned or 'none'}.\n")
+    w("## 13. Season split (`data/processed/splits.json`)\n")
+    sp = schemas.read_json(config.path("splits"), schemas.SPLITS_KEYS)
+    w(md_table(pd.DataFrame([
+        {"split": k, "seasons": f"{v['seasons'][0]}-{v['seasons'][-1]}", "n_seasons": len(v["seasons"]),
+         "matches": v["matches"], "late-over rows": v["late_over_rows"]}
+        for k, v in ((k, sp["counts"][k]) for k in ("train", "validation", "test"))
+    ])))
+    w("\nEvery match is in exactly one split and every test match is later than every train/validation "
+      "match (asserted in `splits.py`). Folds: `reports/splits.md`.\n")
     return "\n".join(out) + "\n"
 
 
